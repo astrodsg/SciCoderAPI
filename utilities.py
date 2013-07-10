@@ -6,9 +6,9 @@ import glob
 
 
 class FitsTable (object):
-
+	
     def __init__ (self, filepath, fix_nan=None):
-
+		
         # check that the file exists
         if not os.path.isfile(filepath):
             raise IOError("File does not exist :"+str(filepath))
