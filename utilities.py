@@ -12,12 +12,14 @@ class FitsTable (object):
         # check that the file exists
         if not os.path.isfile(filepath):
             raise IOError("File does not exist :"+str(filepath))
-
+            
+  		# filepath
+        self.filepath = os.path.abspath(filepath) 
+        
         # open the fits file
         self.hdulist = fits.open(self.filepath, memmap=False)
 
-        # filepath
-        self.filepath = os.path.abspath(self.filepath)
+     
 
         # table header
         self.header = self.hdulist[1].header
