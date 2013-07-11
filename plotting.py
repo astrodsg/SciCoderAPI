@@ -9,7 +9,7 @@ import matplotlib.pylab as plt
 #=======================================================================#
 #
 
-def HistPlot (x,y,binsize=10)
+def HistPlot (x,y,binsize=10):
 
 	# initialize figure and axes
 	fig = plt.figure()
