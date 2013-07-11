@@ -42,7 +42,7 @@ class FitsTable (object):
         """ Accessing columns"""
 
         if column in self.columns and type(column) == str:
-        	self.hdulist[1].data.field(column)[self.flag == 0] = np.nan
+        	# self.hdulist[1].data.field(column)[self.flag == 0] = np.nan
         	return np.array(self.hdulist[1].data.field(column))
 
 
