@@ -27,17 +27,30 @@ class FitsTable (object):
 
         # initialize the columns and numbers
         self.columns = self.hdulist[1].columns.names
+        
+        self.flag = np.zeros(self.hdulist[1].data.field('FLAG').shape)
+        self.flag[self.hdulist[1].data.field('FLAG') == 'nnnnn'] = 1.
 
     def _fix_nan_values(self,arr):
+<<<<<<< HEAD
         if self.fix_nan is None: return arr
         arr[arr == self.fix_nan] = np.NaN
         return arr
 
     
+=======
+		if self.fix_nan is None: 
+			return arr
+		else:
+			arr[arr == self.fix_nan] = np.NaN
+			return arr
+            
+>>>>>>> 2fce7b54df00ee9ab5aa22dc4a6f2ab10d439f12
     def __getitem__(self,column):
         """ Accessing columns"""
 
         if column in self.columns and type(column) == str:
+        	# self.hdulist[1].data.field(column)[self.flag == 0] = np.nan
         	return np.array(self.hdulist[1].data.field(column))
 
 
@@ -85,9 +98,32 @@ class SDSS_Spectrum (object):
         # todo: implement
         #os.system("mv "+self.filename+
 
+<<<<<<< HEAD
         # get the header information
         self.primary_header = self.hdulist[0].header
         self.data_header = self.hdulist[1].header
+=======
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# get the entire header 
+# keyword == TTYPE*
+# keyword get the column number
+# get the column label
+
+>>>>>>> 2fce7b54df00ee9ab5aa22dc4a6f2ab10d439f12
         
         # get the data
         self.flux = self.hdulist[1].data['flux']
