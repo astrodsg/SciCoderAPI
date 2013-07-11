@@ -27,17 +27,24 @@ class FitsTable (object):
 
         # initialize the columns and numbers
         self.columns = self.hdulist[1].columns.names
+        
+        self.flag = np.zeros(self.hdulist[1].data.field('FLAG').shape)
+        self.flag[self.hdulist[1].data.field('FLAG') == 'nnnnn'] = 1.
 
     def _fix_nan_values(self,arr):
-        if self.fix_nan is None: return arr
-        arr[arr == self.fix_nan] = np.NaN
-        return arr
+		if self.fix_nan is None: 
+			return arr
+		else:
+			arr[arr == self.fix_nan] = np.NaN
+			return arr
             
     def __getitem__(self,column):
         """ Accessing columns"""
 
         if column in self.columns and type(column) == str:
+        	self.hdulist[1].data.field(column)[self.flag == 0] = np.nan
         	return np.array(self.hdulist[1].data.field(column))
+
 
 
 
