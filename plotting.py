@@ -45,8 +45,8 @@ def multi_hist_plot(table_object, width, height, *args):
 	# loop over all the axes
 	for ii in range(Nargs):
 		# plot the histogram on the axes
-		axes[ii].hist(table_object[args[ii]])#histtype='stepfilled')
-		# set the xlabel
+		axes[ii].hist(table_object[args[ii]])
+		#set the xlabel
 		axes[ii].set_xlabel(args[ii], fontsize=20)
 	
 	# adjust whitespace
