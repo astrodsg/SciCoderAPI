@@ -2,6 +2,7 @@ import os
 from astropy.io import fits
 from astropy import units as u
 import numpy as np
+import numpy.lib.recfunctions as nprec
 import sys
 from glob import glob
 import pdb
@@ -32,19 +33,30 @@ class FitsTable (object):
         self.flag = np.zeros(self.hdulist[1].data.field('FLAG').shape)
         self.flag[self.hdulist[1].data.field('FLAG') == 'nnnnn'] = 1.
 
-    def _fix_nan_values(self,arr):
+        self._fix_nan_values()
+        
+    def _fix_nan_values(self):
         if self.fix_nan is None: 
-            return arr
+            return 
         else:
-            arr[arr == self.fix_nan] = np.NaN
-            return arr
+            self.hdulist[1].data[self.hdulist[1].data == self.fix_nan] = np.nan
             
     def __getitem__(self,column):
         """ Accessing columns"""
-
+        
         if column in self.columns and type(column) == str:
-            self.hdulist[1].data.field(column)[self.flag == 0] = np.nan
-            return np.array(self.hdulist[1].data.field(column))
+            # self.hdulist[1].data.field(column)[self.flag == 0] = np.nan
+            data = self.hdulist[1].data.field(column)
+	    data[self.flag == 0] = np.nan
+	    return data
+    @property
+    def data (self):
+      data = self.hdulist[1].data[self.flag==0]
+      data = np.nan
+      return data
+                  
+    def add_data_array(self,recarray):
+      nprec.stack_arrays((self.data,b), autoconvert=True, usemask=False)
 
 def ivar_2_var (ivar,fill=1e50):
     ivar = np.array(ivar,dtype=float)
