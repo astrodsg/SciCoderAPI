@@ -1,8 +1,16 @@
 import astropy.units as u
 import numpy as np
+import numpy.lib.recfunctions as nprec
 
 
-def cel_to_cart(Glon_deg, Glat_deg, heliod_noUnit):
+
+def cel_to_cart (l,b,d):
+    gx,gy,gz = _math_for_cel_to_cart(l,b,d)
+    arr = np.array([tuple(gx),tuple(gy),tuple(gz)],
+		    dtype=[('Gx',float),('Gy', float),('Gz',float)] 
+    return arr
+
+def _math_for_cel_to_cart(Glon_deg, Glat_deg, heliod_noUnit):
 	
 	Glon=Glon_deg*180/np.pi
 	Glat=Glat_deg*180/np.pi
@@ -13,6 +21,11 @@ def cel_to_cart(Glon_deg, Glat_deg, heliod_noUnit):
 	Gy= heliod*np.sin(Glat)*np.sin(Glon)
 	Gz= heliod*np.cos(Glat)
 	
-	R=[Gx,Gy,GZ]
+	return Gx Gy Gz
 	
-	return R
+#============================================================
+
+
+  
+  
+  
