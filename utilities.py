@@ -1,9 +1,10 @@
 import os
 from astropy.io import fits
+from astropy import units as u
 import numpy as np
 import sys
 from glob import glob
-
+import pdb
 
 class FitsTable (object):
 	
@@ -45,8 +46,6 @@ class FitsTable (object):
             self.hdulist[1].data.field(column)[self.flag == 0] = np.nan
             return np.array(self.hdulist[1].data.field(column))
 
-
-
 def ivar_2_var (ivar,fill=1e50):
     ivar = np.array(ivar,dtype=float)
     zeros = (ivar == 0.0)
@@ -71,7 +70,6 @@ def var_2_ivar (var,fill=1e50):
     ivar[bad] = 0.0
 
     return ivar
-
 
 def download_sdss_file (plate,fiber,mjd,output_path=None):
     # set url path to the data
@@ -113,27 +111,30 @@ def download_sdss_file (plate,fiber,mjd,output_path=None):
     filepath = os.path.abspath(filepath)
     return filepath
 
-
 class Spectrum (object):   
     def __init__ (self,wavelengths,flux,ivar=None):
         """
         """
         # get the wavelengths and flux and check that they match
-        self.wavelengths = np.asarray(wavelengths)
-        self.flux = np.asarray(flux)
-        if self.wavelengths.shape != self.flux.shape: 
+        self._wavelengths = np.asarray(wavelengths)
+        self._flux = np.asarray(flux)
+        if self._wavelengths.shape != self._flux.shape: 
             raise ValueError("wavelength and flux shapes do not match")
 
         # store shape
-        self.shape = wavelengths.shape
+        self.shape = self._wavelengths.shape
 
         # get inverse variance
         if ivar is None:
-            self.ivar = np.ones_like(wavelengths)
+            self._ivar = np.ones_like(self._wavelengths)
         else:
-            self.ivar = np.asarray(ivar)
-            if self.ivar.shape != self.shape:
+            self._ivar = np.asarray(ivar)
+            if self._ivar.shape != self.shape:
                 raise ValueError("inverse varience does not have same shape as data")
+
+        self._wavelengths *= u.angstrom
+        self._flux *= u.erg/(u.s*u.cm**2) 
+        self._ivar *= (1.0/self._flux**2)
 
     def _check_spectrum_instance (self,spec):
         if not isinstance(spec,SDSS_Spectrum):
@@ -153,6 +154,19 @@ class Spectrum (object):
         ivar = var_2_ivar(ivar_2_var(self.ivar)+ivar_2_var(spec.ivar))
         
         return Spectrum(self.wavelengths,flux,ivar)
+
+
+    @property
+    def wavelengths (self):
+        return self._wavelengths
+
+    @property
+    def flux (self):
+        return self._flux
+    
+    @property
+    def ivar (self):
+        return self._ivar
 
 
 class SDSS_Spectrum (Spectrum):
@@ -203,7 +217,8 @@ class SDSS_Spectrum (Spectrum):
         flux = self.hdulist[1].data['flux']
         wavelengths = 10**(self.hdulist[1].data['loglam'])
         ivar = self.hdulist[1].data['ivar']
-
+        
+        pdb.set_trace()
         super(SDSS_Spectrum,self).__init__(wavelengths,flux,ivar)
 
 
