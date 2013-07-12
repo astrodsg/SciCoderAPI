@@ -32,31 +32,132 @@ class FitsTable (object):
         self.flag[self.hdulist[1].data.field('FLAG') == 'nnnnn'] = 1.
 
     def _fix_nan_values(self,arr):
-<<<<<<< HEAD
-        if self.fix_nan is None: return arr
-        arr[arr == self.fix_nan] = np.NaN
-        return arr
-
-    
-=======
-		if self.fix_nan is None: 
-			return arr
-		else:
-			arr[arr == self.fix_nan] = np.NaN
-			return arr
+        if self.fix_nan is None: 
+            return arr
+        else:
+            arr[arr == self.fix_nan] = np.NaN
+            return arr
             
->>>>>>> 2fce7b54df00ee9ab5aa22dc4a6f2ab10d439f12
     def __getitem__(self,column):
         """ Accessing columns"""
 
         if column in self.columns and type(column) == str:
-        	# self.hdulist[1].data.field(column)[self.flag == 0] = np.nan
-        	return np.array(self.hdulist[1].data.field(column))
+            self.hdulist[1].data.field(column)[self.flag == 0] = np.nan
+            return np.array(self.hdulist[1].data.field(column))
 
 
-class SDSS_Spectrum (object):
+
+def ivar_2_var (ivar,fill=1e50):
+    ivar = np.array(ivar,dtype=float)
+    zeros = (ivar == 0.0)
+    bad = (ivar >= fill)
+    ivar[zeros] = -1.0
+    var = 1.0/ivar
+    var[zeros] = fill
+    var[bad] = 0.0
+    return var
+
+def var_2_ivar (var,fill=1e50):
+    var = np.array(var,dtype=float)
+    zeros = (var==0)
+    bad = (var>=fill/2.0)
     
-    def __init__ (self,plate,fiber,mjd,filepath='.'):
+    var[zeros] = -1.0
+    ivar = 1.0/var
+    
+    # set points which are very large to the fill
+    ivar[zeros] = fill
+    # set points which are almost zero to zero
+    ivar[bad] = 0.0
+
+    return ivar
+
+
+def download_sdss_file (plate,fiber,mjd,output_path=None):
+    # set url path to the data
+    url_path = "http://api.sdss3.org/spectrum?"
+    url_path += "plate="+str(plate)
+    url_path += "&fiber="+str(fiber)
+    url_path += "&mjd="+str(mjd)
+    
+    # execute the commands for the files
+    cmd = "wget --content-disposition '"+url_path+"'"
+    #cmd = "wget '"+url_path+"'"
+    print("Gave command$ "+cmd)
+    os.system(cmd)
+
+    cmd = "curl --remote-header-name -O '"+url_path+"'"
+    # cmd = "curl -O '"+url_path+"'"
+    print("Gave command$ "+cmd)
+    os.system(cmd)
+
+    lookfor = "*".join(("spec",
+                        str(plate),
+                        str(mjd),
+                        str(fiber),
+                        ))+".fits"
+
+    filename_list = glob(lookfor)
+ 
+    # check filename
+    if len(filename_list) ==0:
+        raise IOError("File from the SDSS site was not give expected filename:"+_lookfor+"   "+str(filename_list))
+    
+    filepath = os.path.abspath(filename_list[0])
+    
+    if output_path is not None:
+        if os.path.exists(output_path) and not clobber:
+            raise IOError("File already exists: "+str(output_path))
+        os.system("mv "+filepath+"  "+output_path)
+
+    filepath = os.path.abspath(filepath)
+    return filepath
+
+
+class Spectrum (object):   
+    def __init__ (self,wavelengths,flux,ivar=None):
+        """
+        """
+        # get the wavelengths and flux and check that they match
+        self.wavelengths = np.asarray(wavelengths)
+        self.flux = np.asarray(flux)
+        if self.wavelengths.shape != self.flux.shape: 
+            raise ValueError("wavelength and flux shapes do not match")
+
+        # store shape
+        self.shape = wavelengths.shape
+
+        # get inverse variance
+        if ivar is None:
+            self.ivar = np.ones_like(wavelengths)
+        else:
+            self.ivar = np.asarray(ivar)
+            if self.ivar.shape != self.shape:
+                raise ValueError("inverse varience does not have same shape as data")
+
+    def _check_spectrum_instance (self,spec):
+        if not isinstance(spec,SDSS_Spectrum):
+            raise TypeError("Can't + this to current SDSS_Spectrum : "+type(spec))
+
+    def __eq__ (self,spec):
+        self._check_spectrum_instance(spec)
+        c1 = np.all(spec.wavelengths == self.wavelengths)
+        c2 = np.all(spec.flux == self.flux)
+        c3 = np.all(spec.ivar == self.ivar)
+        return c1 and c2 and c3
+
+    def __add__ (self,spec):
+        self._check_spectrum_instance(spec)
+
+        flux = (self.flux*self.ivar+spec.flux*spec.ivar)/(sum(self.ivar+spec.ivar))
+        ivar = var_2_ivar(ivar_2_var(self.ivar)+ivar_2_var(spec.ivar))
+        
+        return Spectrum(self.wavelengths,flux,ivar)
+
+
+class SDSS_Spectrum (Spectrum):
+    
+    def __init__ (self,plate,fiber,mjd):
         """
         
         This takes the plate, fiber, and mjd to the SDSS api to download that file using
@@ -71,86 +172,43 @@ class SDSS_Spectrum (object):
     	plate = int(plate)
     	fiber = int(fiber)
     	mjd = int(mjd)
-    	
-        self.identify = {"plate":plate,
-                         "fiber":fiber,
-                         "mjd":mjd}
+
+        self.sdss_identify = {"plate":plate,
+                              "fiber":fiber,
+                              "mjd":mjd}
 
         # create the file from the format
-    	self._lookfor = "*".join(("spec",
-                                  str(self.identify["plate"]),
-                                  str(self.identify["mjd"]),
-                                  str(self.identify["fiber"]),
-                                  ))+".fits"
-        filename_list = glob(self._lookfor)
+    	lookfor = "*".join(("spec",
+                            str(self.sdss_identify["plate"]),
+                            str(self.sdss_identify["mjd"]),
+                            str(self.sdss_identify["fiber"]),
+                            ))+".fits"
+
+        filename_list = glob(lookfor)
 
         # if file doesn't exist here then download it
-        # todo: check the filepath location for the file
         if len(filename_list) == 0:
-            filename_list = self._download_file(plate,fiber,mjd)
+            self.filepath = download_sdss_file(plate,fiber,mjd)
         else:
             self.filepath = os.path.abspath(filename_list[0])
-            
+
         # open the file with fits
         self.hdulist = fits.open(self.filepath,ignore_missing_end=True)
 
-        # move the file to another location
-        # todo: implement
-        #os.system("mv "+self.filename+
-
-<<<<<<< HEAD
         # get the header information
         self.primary_header = self.hdulist[0].header
         self.data_header = self.hdulist[1].header
-=======
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# get the entire header 
-# keyword == TTYPE*
-# keyword get the column number
-# get the column label
-
->>>>>>> 2fce7b54df00ee9ab5aa22dc4a6f2ab10d439f12
-        
         # get the data
-        self.flux = self.hdulist[1].data['flux']
-        self.wavelength = 10**(self.hdulist[1].data['loglam'])
+        flux = self.hdulist[1].data['flux']
+        wavelengths = 10**(self.hdulist[1].data['loglam'])
+        ivar = self.hdulist[1].data['ivar']
+
+        super(SDSS_Spectrum,self).__init__(wavelengths,flux,ivar)
 
 
-    def _download_file (self,plate,fiber,mjd):
-        # set url path to the data
-    	self.url_path = "http://api.sdss3.org/spectrum?"
-    	self.url_path += "plate="+str(plate)
-    	self.url_path += "&fiber="+str(fiber)
-    	self.url_path += "&mjd="+str(mjd)
-		    
-	cmd = "wget --content-disposition '"+self.url_path+"'"
-        #cmd = "wget '"+self.url_path+"'"
-        print("Gave command$ "+cmd)
-        os.system(cmd)
-
-        cmd = "curl --remote-header-name -O '"+self.url_path+"'"
-        #cmd = "curl -O '"+self.url_path+"'"
-        print("Gave command$ "+cmd)
-        os.system(cmd)
-        
-        filename_list = glob(self._lookfor)
-
-        # check filename
-        if len(filename_list) ==0:
-            raise IOError("File from the SDSS site was not give expected filename:"+self._lookfor+"   "+str(filename_list))
-
-        self.filepath = filename_list[0]
+    def move_file (self,filepath,clobber=True):
+        if os.path.exists(filepath) and not clobber:
+            raise IOError("File already exists: "+str(filepath))
+        os.system("mv "+self.filename+"  "+filepath)
+        self.filename = os.path.abspath(filepath)
